@@ -1,0 +1,46 @@
+;
+;
+;
+.program timer
+
+    pull noblock    ; Pull timer period from the TX FIFO, loads X into OSR if empty
+    mov x osr       ; Reload X from OSR
+    mov y x
+count:
+    jmp y-- count
+    irq 0
+
+
+% c-sdk {
+static inline void timer_program_init(PIO pio, uint32_t sm, uint32_t offset, float div) {
+    pio_sm_config c = timer_program_get_default_config(offset);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_clkdiv(pio, sm, div);
+}
+
+static inline void timer_set_period(PIO pio, uint32_t sm, uint32_t offset, uint32_t period) {
+
+    static uint32_t period_prev = 0;
+
+    if(period_prev != period) {
+        period_prev = period;
+        pio_sm_put(pio, sm, period);
+        pio_sm_exec(pio, sm, pio_encode_jmp(offset));
+    }
+
+    if(!(pio->ctrl & (1 << sm))) {
+        pio_sm_set_enabled(pio, sm, true);
+        pio->inte0 |= PIO_INTR_SM0_BITS;
+    }
+ }
+
+static inline void timer_stop(PIO pio, uint32_t sm) {
+    pio_sm_set_enabled(pio, sm, false);
+    pio->inte0 &= ~PIO_INTR_SM0_BITS;
+}
+
+static inline void timer_irq_clear(PIO pio) {
+    pio->irq = 1;
+}
+%}
