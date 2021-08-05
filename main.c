@@ -12,11 +12,26 @@
 static PIO pio = pio0;
 static int led_state = 1;
 
+volatile int32_t phase = 0;
+volatile int32_t frequency = 0;
+
+void step(int direction) {
+    led_state = !led_state;
+    gpio_put(PICO_DEFAULT_LED_PIN, led_state);
+}
+
 void pio_timer_isr() {
     timer_irq_clear(pio);
 
-    led_state = !led_state;
-    gpio_put(PICO_DEFAULT_LED_PIN, led_state);
+    int32_t new_phase = phase + frequency;  // phase accumulate
+    if ((phase ^ new_phase) < 0L)  // sign bit changed, time to step
+    {
+        if (frequency > 0L)
+            step (1);
+        else
+            step (-1);
+    }
+    phase = new_phase;
 }
 
 int main() {
@@ -39,7 +54,12 @@ int main() {
     // Pico clock runs at 125Mhz
     // This makes the PIO run at 10Mhz
     timer_program_init(pio, sm, offset, 12.5f);
-    timer_set_period(pio, sm, offset, 2500000);
+
+    // Generate an IRQ signal every 1000 clocks
+    // Effective rate 10Khz
+    timer_set_period(pio, sm, offset, 1000);
+
+    frequency = INT32_MAX / 10000;  // Effective 1hz
 
     for (;;) {
         sleep_ms(250);
