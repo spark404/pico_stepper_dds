@@ -13,6 +13,7 @@ add_executable(pico-stepper-dds
 )
 
 pico_generate_pio_header(pico-stepper-dds ${CMAKE_CURRENT_LIST_DIR}/timer.pio)
+pico_generate_pio_header(pico-stepper-dds ${CMAKE_CURRENT_LIST_DIR}/shift_register.pio)
 
 target_sources(pico-stepper-dds PRIVATE
         main.c

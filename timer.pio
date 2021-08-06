@@ -43,4 +43,5 @@ static inline void timer_stop(PIO pio, uint32_t sm) {
 static inline void timer_irq_clear(PIO pio) {
     pio->irq = 1;
 }
+
 %}

@@ -1,0 +1,39 @@
+;
+; PIO program supporting the 74HC595 shift register
+;
+
+.program shift_register
+.side_set 2
+    pull block       side 0x2
+    set x, 7         side 0x0
+bitloop:
+    out pins, 1      side 0x0
+    jmp x-- bitloop  side 0x1
+    set pins, 0      side 0x2
+
+% c-sdk {
+static inline void shift_register_program_init(PIO pio, uint32_t sm, uint32_t offset, uint data_pin, uint clock_pin) {
+    pio_sm_config c = shift_register_program_get_default_config(offset);
+
+    sm_config_set_out_pins(&c, data_pin, 1);
+    sm_config_set_set_pins(&c, data_pin, 1);
+    sm_config_set_sideset_pins(&c, clock_pin);
+    sm_config_set_clkdiv(&c, 50.0f);    // 10Mhz
+
+    pio_sm_set_pins_with_mask(pio, sm, (3u << clock_pin) | (1u << data_pin), (3u << clock_pin) | (1u << data_pin));
+    pio_sm_set_pindirs_with_mask(pio, sm, (3u << clock_pin) | (1u << data_pin), (3u << clock_pin) | (1u << data_pin));
+
+    pio_gpio_init(pio, data_pin);
+    pio_gpio_init(pio, clock_pin);
+    pio_gpio_init(pio, clock_pin + 1); // Latch pin
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void shift_register_program_set(PIO pio, uint32_t sm, uint32_t value) {
+    pio_sm_put_blocking(pio, sm, value);
+}
+
+%}
+
