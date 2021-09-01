@@ -22,6 +22,7 @@ target_sources(pico-stepper-dds PRIVATE
 target_link_libraries(pico-stepper-dds PRIVATE
         pico_stdlib
         hardware_pio
+        hardware_i2c
         )
 
 pico_enable_stdio_usb(pico-stepper-dds 1)
