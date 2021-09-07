@@ -7,6 +7,8 @@ jobs:
       PICO_SDK_FETCH_FROM_GIT: on    
     steps:
       - uses: actions/checkout@v2
+      - name: Install Ninja
+        run: sudo apt-get install -y ninja-build
       - name: Generate Buildfiles
         run: |
           mkdir build
