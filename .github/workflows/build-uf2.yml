@@ -23,4 +23,15 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: firmware
-          path: build/*.uf2    
+          path: build/*.uf2
+      - name: Picotool Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: https://github.com/raspberrypi/picotool.git
+          path: picotool
+      - name: Picotool Build
+        run: |
+          mkdir picotool/build
+          cd picotool/build
+          cmake .. -G Ninja
+          ninja
