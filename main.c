@@ -36,19 +36,40 @@
 
 #define CONTROL_SPINDLE_PWM 26  //A0
 
+typedef union {
+    struct {
+        uint8_t x_step: 1;
+        uint8_t y_step: 1;
+        uint8_t z_step: 1;
+        uint8_t a_step: 1;
+        uint8_t x_dir: 1;
+        uint8_t y_dir: 1;
+        uint8_t z_dir: 1;
+        uint8_t a_dir: 1;
+    };
+    uint8_t raw;
+} stepper_state_t;
+
 static PIO timer_pio = pio0;
 static PIO shift_pio = pio1;
 static int led_state = 1;
+
+volatile uint sr_sm;
 
 volatile int32_t phase = 0;
 volatile int32_t frequency = 0;
 int32_t stepper_speed = 0;
 int32_t target_speed = 1000;
-
+stepper_state_t stepper_state;
 
 void step(int direction) {
     led_state = !led_state;
     gpio_put(PICO_DEFAULT_LED_PIN, led_state);
+
+    stepper_state.x_step =! stepper_state.x_step;
+    stepper_state.x_dir = direction > 0 ? 1 : 0;
+    shift_register_program_set(shift_pio, sr_sm, stepper_state.raw);
+
 }
 
 void pio_timer_isr() {
@@ -72,7 +93,7 @@ void pio_timer_isr() {
 void set_stepper_speed_mmmin(int speed) {
 #define STEPS_PER_ROTATION 200
 #define PULLEY_TOOTH        25
-#define MICROSTEPS           1
+#define MICROSTEPS           8
 #define BELT_PITCH           2
     double mm_per_step = (double)PULLEY_TOOTH * MICROSTEPS * BELT_PITCH / STEPS_PER_ROTATION;
     double steps_per_mm = 1 / mm_per_step;
@@ -113,7 +134,7 @@ int main() {
     uint sm = pio_claim_unused_sm(timer_pio, true);
 
     uint sr_offset = pio_add_program(shift_pio, &shift_register_program);
-    uint sr_sm = pio_claim_unused_sm(shift_pio, true);
+    sr_sm = pio_claim_unused_sm(shift_pio, true);
 
     irq_set_exclusive_handler(PIO0_IRQ_0, pio_timer_isr);
     irq_set_enabled(PIO0_IRQ_0, true);
@@ -134,7 +155,6 @@ int main() {
     int integral = 0;
     int last_error = 0;
     for (;;) {
-        shift_register_program_set(shift_pio, sr_sm, leds);
         leds = led_dir ? leds << 1 : leds >> 1;
         if (leds == 1 || leds == (1<<7)) {
             led_dir = !led_dir;
@@ -149,16 +169,16 @@ int main() {
             integral = -target_speed;
         }
         int derivative = error - last_error;
-        double kp = 0.01;
+        double kp = 0.1;
         double ki = 0.001;
         double kd = 0.1;
 
         stepper_speed += kp * error + (ki * integral) + (kd * derivative);
-//        if (stepper_speed == 1000) {
-//            target_speed = 0;
-//        } else if (stepper_speed == 0) {
-//            target_speed = 1000;
-//        }
+        if (stepper_speed == 1001) {
+            target_speed = -1000;
+        } else if (stepper_speed == -993) {
+            target_speed = 1000;
+        }
         set_stepper_speed_mmmin(stepper_speed);
         last_error = error;
 
