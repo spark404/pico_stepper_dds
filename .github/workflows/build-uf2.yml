@@ -3,6 +3,8 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      PICO_SDK_FETCH_FROM_GIT: on    
     steps:
       - uses: actions/checkout@v2
       - name: Generate Buildfiles
