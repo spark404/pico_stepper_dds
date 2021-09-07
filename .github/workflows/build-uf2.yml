@@ -7,7 +7,7 @@ jobs:
       PICO_SDK_FETCH_FROM_GIT: on    
     steps:
       - uses: actions/checkout@v2
-      - name: Install Ninja
+      - name: Install Toolchain
         run: sudo apt-get install -y ninja-build gcc-arm-none-eabi
       - name: Generate Buildfiles
         run: |
@@ -15,6 +15,10 @@ jobs:
           cd build
           cmake .. -G Ninja
       - name: Execute Ninja build    
-        run:
+        run: |
           cd build
           ninja
+      - uses: actions/upload-artifact@v2
+        with:
+          name: firmware
+          path: build/*.uf2    
