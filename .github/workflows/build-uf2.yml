@@ -27,7 +27,7 @@ jobs:
       - name: Picotool Checkout
         uses: actions/checkout@v2
         with:
-          repository: https://github.com/raspberrypi/picotool.git
+          repository: raspberrypi/picotool.git
           path: picotool
       - name: Picotool Build
         run: |
