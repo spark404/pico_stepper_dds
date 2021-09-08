@@ -36,6 +36,15 @@
 
 #define CONTROL_SPINDLE_PWM 26  //A0
 
+// Stepper
+#define MICROSTEPS          32
+// Stepper Beltdrive
+#define STEPS_PER_ROTATION 200
+#define PULLEY_TOOTH        25
+#define BELT_PITCH           2
+// Stepper Spindle
+#define MM_PER_ROTATION      8
+
 typedef union {
     struct {
         uint8_t x_step: 1;
@@ -59,7 +68,7 @@ volatile uint sr_sm;
 volatile int32_t phase = 0;
 volatile int32_t frequency = 0;
 int32_t stepper_speed = 0;
-int32_t target_speed = 1000;
+int32_t target_speed = -2000;
 stepper_state_t stepper_state;
 
 void step(int direction) {
@@ -91,13 +100,19 @@ void pio_timer_isr() {
  * @param speed mm/min
  */
 void set_stepper_speed_mmmin(int speed) {
-#define STEPS_PER_ROTATION 200
-#define PULLEY_TOOTH        25
-#define MICROSTEPS           8
-#define BELT_PITCH           2
-    double mm_per_step = (double)PULLEY_TOOTH * MICROSTEPS * BELT_PITCH / STEPS_PER_ROTATION;
+    double mm_per_step = (double)PULLEY_TOOTH * BELT_PITCH / (STEPS_PER_ROTATION * MICROSTEPS);
     double steps_per_mm = 1 / mm_per_step;
-    double stepper_frequency = steps_per_mm * speed / 60;
+    double stepper_frequency = steps_per_mm * speed / 60 * 2;
+    frequency = INT32_MAX / 100000 * stepper_frequency;
+    printf("Stepper: speed %d, steps_per_mm %0.2f, stepper %0.2f hz, frequency %ld\n",
+           speed, steps_per_mm, stepper_frequency, frequency);
+}
+
+void set_stepper_speed_mmmin_spindle(int speed) {
+
+    double mm_per_step = (double)MM_PER_ROTATION / (STEPS_PER_ROTATION * MICROSTEPS);
+    double steps_per_mm = 1 / mm_per_step;
+    double stepper_frequency = steps_per_mm * speed / 60 * 2;
     frequency = INT32_MAX / 100000 * stepper_frequency;
     printf("Stepper: speed %d, steps_per_mm %0.2f, stepper %0.2f hz, frequency %ld\n",
            speed, steps_per_mm, stepper_frequency, frequency);
@@ -174,11 +189,6 @@ int main() {
         double kd = 0.1;
 
         stepper_speed += kp * error + (ki * integral) + (kd * derivative);
-        if (stepper_speed == 1001) {
-            target_speed = -1000;
-        } else if (stepper_speed == -993) {
-            target_speed = 1000;
-        }
         set_stepper_speed_mmmin(stepper_speed);
         last_error = error;
 
