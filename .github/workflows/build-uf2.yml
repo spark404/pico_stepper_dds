@@ -19,6 +19,11 @@ jobs:
         run: |
           cd build
           ninja
+      - name: Execute picotool
+        uses: spark404/picotool_action@v3
+        with:
+          command: info
+          arguments: build/pico-stepper-dds.uf2
       - name: Archive
         uses: actions/upload-artifact@v2
         with:
